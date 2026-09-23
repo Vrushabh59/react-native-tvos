@@ -28,6 +28,9 @@ import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.ReadableMapKeySetIterator;
 import com.facebook.react.bridge.ReadableType;
+import android.app.UiModeManager;
+import android.content.Context;
+import android.content.res.Configuration;
 import com.facebook.react.common.MapBuilder;
 import com.facebook.react.common.ReactConstants;
 import com.facebook.react.uimanager.ReactAccessibilityDelegate.AccessibilityRole;
@@ -382,7 +385,13 @@ public abstract class BaseViewManager<T extends View, C extends LayoutShadowNode
     }
     view.setTag(R.id.accessibility_state, accessibilityState);
     if (accessibilityState.hasKey("disabled")) {
-      view.setEnabled(!accessibilityState.getBoolean("disabled"));
+      boolean disabled = accessibilityState.getBoolean("disabled");
+      // TV: setEnabled(false) removes the view from D-pad focus search.
+      if (!disabled
+          || !isTvDevice(view.getContext())
+          || !view.isFocusable()) {
+        view.setEnabled(!disabled);
+      }
     }
 
     // For states which don't have corresponding methods in
@@ -1046,6 +1055,13 @@ public abstract class BaseViewManager<T extends View, C extends LayoutShadowNode
    * especially helpful for views that are recycled so we can retain and restore the original
    * listener upon recycling (onDropViewInstance).
    */
+  private static boolean isTvDevice(@NonNull Context context) {
+    UiModeManager uiModeManager =
+        (UiModeManager) context.getSystemService(Context.UI_MODE_SERVICE);
+    return uiModeManager != null
+        && uiModeManager.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION;
+  }
+
   private static class BaseVMFocusChangeListener implements OnFocusChangeListener {
     private @Nullable OnFocusChangeListener mOriginalFocusChangeListener;
 
